@@ -1,0 +1,1 @@
+SELECT VendorID,tpep_pickup_datetime,tpep_dropoff_datetime,passenger_count,trip_distance,pickup_longitude,pickup_latitude,RatecodeID FROM taxi_trips LIMIT 3;

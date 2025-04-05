@@ -1,0 +1,1 @@
+COPY taxi_trips FROM STDIN WITH CSV HEADER DELIMITER ',' NULL AS 'null';
