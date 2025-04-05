@@ -1,7 +1,7 @@
 """
 build_projectdb.py
 
-This module contains functions to connect to a PostgreSQL database, create tables, import 
+This module contains functions to connect to a PostgreSQL database, create tables, import
 data from a CSV file, and execute test queries.
 """
 
