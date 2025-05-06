@@ -18,36 +18,39 @@ from pyspark.sql.functions import sin, cos, lit
 
 
 class UnixMillisToTimestamp(Transformer):
-    def __init__(self, inputCol=None, outputCol=None):
-        super(UnixMillisToTimestamp, self).__init__()
-        self.inputCol = inputCol
-        self.outputCol = outputCol
+    """Custom Transformer to convert Unix milliseconds to timestamp."""
+
+    def __init__(self, input_col=None, output_col=None):
+        super().__init__()
+        self.input_col = input_col
+        self.output_col = output_col
 
     def _transform(self, dataset):
         return dataset.withColumn(
-            self.outputCol,
-            to_timestamp(from_unixtime(col(self.inputCol)/1000))
+            self.output_col,
+            to_timestamp(from_unixtime(col(self.input_col) / 1000))
         )
 
 
 # Custom Transformer to extract hour and month
 class ExtractHourMonth(Transformer):
-    def __init__(self, inputCol=None, prefix="pickup"):
-        super(ExtractHourMonth, self).__init__()
-        self.inputCol = inputCol
+    """Custom Transformer to extract hour and month from a timestamp."""
+
+    def __init__(self, input_col=None, prefix="pickup"):
+        super().__init__()
+        self.input_col = input_col
         self.prefix = prefix
 
     def _transform(self, dataset):
         dataset = dataset.withColumn(f"{self.prefix}_hour",
-                                     hour(col(self.inputCol)))
+                                     hour(col(self.input_col)))
         return dataset.withColumn(f"{self.prefix}_month",
-                                  month(col(self.inputCol)))
+                                  month(col(self.input_col)))
 
 
 # Custom Transformer for cyclical encoding
 class CyclicalEncoder(Transformer):
-    def __init__(self):
-        super(CyclicalEncoder, self).__init__()
+    """Custom Transformer to apply cyclical encoding to time features."""
 
     def _transform(self, dataset):
         dataset = dataset.withColumn(
@@ -78,6 +81,8 @@ class CyclicalEncoder(Transformer):
 
 # Custom Transformer to select features and rename label
 class SelectAndRename(Transformer):
+    """Selects specific columns and renames target column to 'label'."""
+
     def _transform(self, dataset):
         cols = [
             'total_amount', 'vendorid',
@@ -94,6 +99,7 @@ class SelectAndRename(Transformer):
 
 
 def main():
+    """Main function to execute the ML pipeline."""
     # 1. Init Spark
     spark = SparkSession.builder \
         .appName("team11 - stage3") \
@@ -155,25 +161,30 @@ def main():
             "name": "RandomForest",
             "estimator": RandomForestRegressor(featuresCol="features",
                                                labelCol="label"),
-            "param_grid": ParamGridBuilder()
-                    .addGrid(RandomForestRegressor().numTrees, [10, 40])
-                    .addGrid(RandomForestRegressor().maxDepth, [5, 10])
-                    .build(),
-            "output_model": "model1",
-            "output_pred": "model1_predictions_"
         },
         {
             "name": "GBT",
-            "estimator": GBTRegressor(featuresCol="features",
-                                      labelCol="label"),
-            "param_grid": ParamGridBuilder()
-                    .addGrid(GBTRegressor().maxDepth, [3, 8])
-                    .addGrid(GBTRegressor().maxBins, [24, 32])
-                    .build(),
-            "output_model": "model2",
-            "output_pred": "model2_predictions_"
+            "estimator": GBTRegressor(featuresCol="features", labelCol="label"),
         }
     ]
+
+    # Build parameter grids referring to the same estimator instances:
+    models_config[0]["param_grid"] = ParamGridBuilder()  \
+        .addGrid(models_config[0]["estimator"].numTrees, [10, 40])  \
+        .addGrid(models_config[0]["estimator"].maxDepth, [5, 10])  \
+        .build()
+
+    models_config[1]["param_grid"] = ParamGridBuilder()  \
+        .addGrid(models_config[1]["estimator"].maxDepth, [3, 8])  \
+        .addGrid(models_config[1]["estimator"].maxBins, [24, 32])  \
+        .build()
+
+    # Add output paths
+    models_config[0].update({"output_model": "model1",
+                             "output_pred": "model1_predictions"})
+    models_config[1].update({"output_model": "model2",
+                             "output_pred": "model2_predictions"})
+
     results = []
 
     # 6. Loop through configs
@@ -212,7 +223,8 @@ def main():
         baseline_predictions.select("label", "prediction") \
             .coalesce(1) \
             .write.mode("overwrite")\
-            .csv(f"project/output/{config['output_pred'].replace('_', '_baseline')}", header=True)
+            .csv(f"project/output/{config['output_pred']}_baseline",
+                 header=True)
 
         # Step 2: Hyperparameter tuning with CrossValidator
         print(f"\n--- Running hyperparameter tuning for: {config['name']} ---")
@@ -232,6 +244,9 @@ def main():
 
         param_map = tuned_model.extractParamMap()
         params = {p.name: tuned_model.getOrDefault(p) for p in param_map.keys()}
+        grid_params = config['param_grid'][0].keys()
+        relevant_param_names = [gp.name for gp in grid_params]
+        filtered_params = {k: v for k, v in params.items() if k in relevant_param_names}
 
         # Save tuned model and predictions
         tuned_model.write().overwrite()\
@@ -251,14 +266,15 @@ def main():
 
         results.append((
             f"{config['name']}_tuned",
-            str(params),
+            str(filtered_params),
             tuned_rmse,
             tuned_r2,
             tuning_train_time,
             tuning_test_time))
 
         # 7. Write evaluation summary
-        spark.createDataFrame(results, ["model", "params", "rmse", "r2"]) \
+        spark.createDataFrame(results, ["model", "params", "rmse", "r2",
+                                        "train_time_sec", "eval_time_sec"]) \
             .coalesce(1).write.mode("overwrite")\
             .csv("project/output/evaluation", header=True)
 
