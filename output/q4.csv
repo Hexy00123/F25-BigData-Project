@@ -1,0 +1,40 @@
+0: jdbc:hive2://hadoop-03.uni.innopolis.ru:10> -- Query 4: Trip Distance Analysis
+0: jdbc:hive2://hadoop-03.uni.innopolis.ru:10> USE team11_projectdb;
+0: jdbc:hive2://hadoop-03.uni.innopolis.ru:10> 
+0: jdbc:hive2://hadoop-03.uni.innopolis.ru:10> DROP TABLE IF EXISTS q4_results;
+0: jdbc:hive2://hadoop-03.uni.innopolis.ru:10> CREATE TABLE q4_results AS
+. . . . . . . . . . . . . . . . . . . . . . .> SELECT 
+. . . . . . . . . . . . . . . . . . . . . . .>     CASE 
+. . . . . . . . . . . . . . . . . . . . . . .>         WHEN trip_distance < 1 THEN '0-1'
+. . . . . . . . . . . . . . . . . . . . . . .>         WHEN trip_distance < 3 THEN '1-3'
+. . . . . . . . . . . . . . . . . . . . . . .>         WHEN trip_distance < 5 THEN '3-5'
+. . . . . . . . . . . . . . . . . . . . . . .>         WHEN trip_distance < 10 THEN '5-10'
+. . . . . . . . . . . . . . . . . . . . . . .>         ELSE '10+'
+. . . . . . . . . . . . . . . . . . . . . . .>     END AS distance_range,
+. . . . . . . . . . . . . . . . . . . . . . .>     COUNT(*) AS trip_count,
+. . . . . . . . . . . . . . . . . . . . . . .>     ROUND(AVG(fare_amount), 2) AS avg_fare,
+. . . . . . . . . . . . . . . . . . . . . . .>     ROUND(AVG(total_amount), 2) AS avg_total,
+. . . . . . . . . . . . . . . . . . . . . . .>     ROUND(AVG(passenger_count), 2) AS avg_passengers
+. . . . . . . . . . . . . . . . . . . . . . .> FROM 
+. . . . . . . . . . . . . . . . . . . . . . .>     taxi_trips_part
+. . . . . . . . . . . . . . . . . . . . . . .> GROUP BY 
+. . . . . . . . . . . . . . . . . . . . . . .>     CASE 
+. . . . . . . . . . . . . . . . . . . . . . .>         WHEN trip_distance < 1 THEN '0-1'
+. . . . . . . . . . . . . . . . . . . . . . .>         WHEN trip_distance < 3 THEN '1-3'
+. . . . . . . . . . . . . . . . . . . . . . .>         WHEN trip_distance < 5 THEN '3-5'
+. . . . . . . . . . . . . . . . . . . . . . .>         WHEN trip_distance < 10 THEN '5-10'
+. . . . . . . . . . . . . . . . . . . . . . .>         ELSE '10+'
+. . . . . . . . . . . . . . . . . . . . . . .>     END
+. . . . . . . . . . . . . . . . . . . . . . .> ORDER BY 
+. . . . . . . . . . . . . . . . . . . . . . .>     distance_range;
+0: jdbc:hive2://hadoop-03.uni.innopolis.ru:10>     
+0: jdbc:hive2://hadoop-03.uni.innopolis.ru:10> SELECT * FROM q1_results;
++---------------+-------------+-------------+
+| payment_type  | trip_count  | percentage  |
++---------------+-------------+-------------+
+| 1             | 8127391     | 66.56       |
+| 2             | 4020408     | 32.92       |
+| 3             | 46913       | 0.38        |
+| 4             | 16240       | 0.13        |
++---------------+-------------+-------------+
+0: jdbc:hive2://hadoop-03.uni.innopolis.ru:10> 

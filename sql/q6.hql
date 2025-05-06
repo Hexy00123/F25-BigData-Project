@@ -1,0 +1,83 @@
+-- Query 6: Correlation of features with total_amount
+USE team11_projectdb;
+
+DROP TABLE IF EXISTS q6_results;
+CREATE TABLE q6_results AS
+WITH stats AS (
+    SELECT
+        COUNT(*) AS n,
+        AVG(passenger_count) AS avg_passenger_count,
+        AVG(total_amount) AS avg_total_amount,
+        AVG(trip_distance) AS avg_trip_distance,
+        AVG(pickup_longitude) AS avg_pickup_longitude,
+        AVG(pickup_latitude) AS avg_pickup_latitude,
+        AVG(fare_amount) AS avg_fare_amount,
+        AVG(extra) AS avg_extra,
+        AVG(mta_tax) AS avg_mta_tax,
+        AVG(tip_amount) AS avg_tip_amount,
+        AVG(tolls_amount) AS avg_tolls_amount,
+        AVG(improvement_surcharge) AS avg_improvement_surcharge,
+        
+        SUM(passenger_count * total_amount) AS sum_passenger_count_total_amount,
+        SUM(total_amount * trip_distance) AS sum_total_amount_trip_distance,
+        SUM(total_amount * pickup_longitude) AS sum_total_amount_pickup_longitude,
+        SUM(total_amount * pickup_latitude) AS sum_total_amount_pickup_latitude,
+        SUM(total_amount * fare_amount) AS sum_total_amount_fare_amount,
+        SUM(total_amount * extra) AS sum_total_amount_extra,
+        SUM(total_amount * mta_tax) AS sum_total_amount_mta_tax,
+        SUM(total_amount * tip_amount) AS sum_total_amount_tip_amount,
+        SUM(total_amount * tolls_amount) AS sum_total_amount_tolls_amount,
+        SUM(total_amount * improvement_surcharge) AS sum_total_amount_improvement_surcharge,
+        
+        SUM(total_amount * total_amount) AS sum_total_amount_total_amount,
+        SUM(fare_amount * fare_amount) AS sum_fare_amount_fare_amount,
+        SUM(extra * extra) AS sum_extra_extra,
+        SUM(mta_tax * mta_tax) AS sum_mta_tax_mta_tax,
+        SUM(tip_amount * tip_amount) AS sum_tip_amount_tip_amount,
+        SUM(tolls_amount * tolls_amount) AS sum_tolls_amount_tolls_amount,
+        SUM(improvement_surcharge * improvement_surcharge) AS sum_improvement_surcharge_improvement_surcharge
+    FROM team11_projectdb.taxi_trips
+)
+SELECT
+    COALESCE((sum_passenger_count_total_amount - n * avg_passenger_count * avg_total_amount) /
+    (SQRT((sum_total_amount_total_amount - n * avg_total_amount * avg_total_amount) *
+          (sum_passenger_count_total_amount - n * avg_passenger_count * avg_passenger_count))), 0) AS corr_total_amount_passenger_count,
+
+    COALESCE((sum_total_amount_trip_distance - n * avg_total_amount * avg_trip_distance) /
+    (SQRT((sum_total_amount_total_amount - n * avg_total_amount * avg_total_amount) *
+          (sum_total_amount_trip_distance - n * avg_trip_distance * avg_trip_distance))), 0) AS corr_total_amount_trip_distance,
+
+    COALESCE((sum_total_amount_pickup_longitude - n * avg_total_amount * avg_pickup_longitude) /
+    (SQRT((sum_total_amount_total_amount - n * avg_total_amount * avg_total_amount) *
+          (sum_total_amount_pickup_longitude - n * avg_pickup_longitude * avg_pickup_longitude))), 0) AS corr_total_amount_pickup_longitude,
+
+    COALESCE((sum_total_amount_pickup_latitude - n * avg_total_amount * avg_pickup_latitude) /
+    (SQRT((sum_total_amount_total_amount - n * avg_total_amount * avg_total_amount) *
+          (sum_total_amount_pickup_latitude - n * avg_pickup_latitude * avg_pickup_latitude))), 0) AS corr_total_amount_pickup_latitude,
+
+    COALESCE((sum_total_amount_fare_amount - n * avg_total_amount * avg_fare_amount) /
+    (SQRT((sum_total_amount_total_amount - n * avg_total_amount * avg_total_amount) *
+          (sum_fare_amount_fare_amount - n * avg_fare_amount * avg_fare_amount))), 0) AS corr_total_amount_fare_amount,
+
+    COALESCE((sum_total_amount_extra - n * avg_total_amount * avg_extra) /
+    (SQRT((sum_total_amount_total_amount - n * avg_total_amount * avg_total_amount) *
+          (sum_extra_extra - n * avg_extra * avg_extra))), 0) AS corr_total_amount_extra,
+
+    COALESCE((sum_total_amount_mta_tax - n * avg_total_amount * avg_mta_tax) /
+    (SQRT((sum_total_amount_total_amount - n * avg_total_amount * avg_total_amount) *
+          (sum_mta_tax_mta_tax - n * avg_mta_tax * avg_mta_tax))), 0) AS corr_total_amount_mta_tax,
+
+    COALESCE((sum_total_amount_tip_amount - n * avg_total_amount * avg_tip_amount) /
+    (SQRT((sum_total_amount_total_amount - n * avg_total_amount * avg_total_amount) *
+          (sum_tip_amount_tip_amount - n * avg_tip_amount * avg_tip_amount))), 0) AS corr_total_amount_tip_amount,
+
+    COALESCE((sum_total_amount_tolls_amount - n * avg_total_amount * avg_tolls_amount) /
+    (SQRT((sum_total_amount_total_amount - n * avg_total_amount * avg_total_amount) *
+          (sum_tolls_amount_tolls_amount - n * avg_tolls_amount * avg_tolls_amount))), 0) AS corr_total_amount_tolls_amount,
+
+    COALESCE((sum_total_amount_improvement_surcharge - n * avg_total_amount * avg_improvement_surcharge) /
+    (SQRT((sum_total_amount_total_amount - n * avg_total_amount * avg_total_amount) *
+          (sum_improvement_surcharge_improvement_surcharge - n * avg_improvement_surcharge * avg_improvement_surcharge))), 0) AS corr_total_amount_improvement_surcharge
+FROM stats;
+
+
