@@ -10,7 +10,8 @@ import math
 from pyspark.sql import SparkSession
 from pyspark.ml import Pipeline, Transformer
 from pyspark.ml.feature import VectorAssembler, StandardScaler
-from pyspark.ml.regression import RandomForestRegressor, GBTRegressor
+from pyspark.ml.regression import RandomForestRegressor, GBTRegressor,\
+                                    DecisionTreeRegressor
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.tuning import ParamGridBuilder, CrossValidator
 from pyspark.sql.functions import col, hour, month, to_timestamp, from_unixtime
@@ -164,7 +165,13 @@ def main():
         },
         {
             "name": "GBT",
-            "estimator": GBTRegressor(featuresCol="features", labelCol="label"),
+            "estimator": GBTRegressor(featuresCol="features",
+                                      labelCol="label"),
+        },
+        {
+            "name": "DecisionTree",
+            "estimator": DecisionTreeRegressor(featuresCol="features",
+                                               labelCol="label")
         }
     ]
 
@@ -179,11 +186,18 @@ def main():
         .addGrid(models_config[1]["estimator"].maxBins, [24, 32])  \
         .build()
 
+    models_config[2]["param_grid"] = ParamGridBuilder()  \
+        .addGrid(models_config[2]["estimator"].maxDepth, [3, 8])  \
+        .addGrid(models_config[2]["estimator"].maxBins, [24, 32])  \
+        .build()
+
     # Add output paths
     models_config[0].update({"output_model": "model1",
                              "output_pred": "model1_predictions"})
     models_config[1].update({"output_model": "model2",
                              "output_pred": "model2_predictions"})
+    models_config[2].update({"output_model": "model3",
+                             "output_pred": "model3_predictions"})
 
     results = []
 
