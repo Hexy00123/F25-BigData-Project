@@ -4,7 +4,7 @@ This folder contains all SQL and HiveQL scripts used throughout the project — 
 
 ## Contents
 
-### 🛠️ Database Setup
+### Database Setup
 
 - **`create_tables.sql`**  
   Defines the structure of the `taxi_trips` table in PostgreSQL. Includes constraints (e.g., valid `payment_type` values).
@@ -17,7 +17,7 @@ This folder contains all SQL and HiveQL scripts used throughout the project — 
 
 ---
 
-### 🐝 Hive Setup & Processing
+### Hive Setup & Processing
 
 - **`db.hql`**  
   Main HiveQL script used in Stage 2.  
@@ -32,7 +32,7 @@ This folder contains all SQL and HiveQL scripts used throughout the project — 
 
 ---
 
-### 📊 Analytical Queries (EDA)
+### Analytical Queries (EDA)
 
 - **`q1.hql`** to **`q7.hql`**  
   A set of predefined Hive queries that extract insights from the taxi trip data, such as:
