@@ -1,6 +1,6 @@
 # 🚕 NYC Yellow Taxi Fare Prediction – Big Data Pipeline Project
 
-This repository is a template for the **final project** of a Big Data course. The goal is to build a complete end-to-end pipeline for predicting taxi fares in New York City using large-scale real-world data.
+This is repository for the **final project** of a Big Data course. The goal is to build a complete end-to-end pipeline for predicting taxi fares in New York City using large-scale real-world data.
 
 The pipeline handles everything from data collection and preprocessing to machine learning model training and result visualization — all built using distributed computing tools like Spark, Hive, and Hadoop.
 
