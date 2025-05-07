@@ -4,21 +4,21 @@ This folder contains various output artifacts produced throughout the pipeline �
 
 ## Contents
 
-### 📄 `hive_results.txt`  
+### `hive_results.txt`  
 Output log from Stage 2’s Hive script execution. Includes table creation, partitioning confirmations, and sanity-check query results.
 
-### 📄 `q1.csv` to `q7.csv`  
+### `q1.csv` to `q7.csv`  
 CSV results of Hive queries written in `q1.hql` through `q7.hql`. These were used for analysis and visualization in later stages of the project.
 
-### 📄 `*.avsc`  
+### `*.avsc`  
 Avro schema definitions automatically generated during data export steps. These define the structure of the Parquet/Avro-serialized data.
 
-### 📄 `*.java`  
+### `*.java`  
 Java class files generated from the Avro schemas. Used by Spark or Hadoop when working with Avro-formatted data.
 
 ---
 
-### 🖼️ Data Visualization Files (`*.jpg`)
+### Data Visualization Files (`*.jpg`)
 
 These image files were exported from Superset as part of the **EDA and reporting process**. Each corresponds to a specific analysis or insight and was used in the final dashboard and report:
 
