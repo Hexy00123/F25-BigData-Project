@@ -6,22 +6,22 @@ This folder contains the serialized versions of all trained machine learning mod
 
 Each model is saved as a separate directory containing Spark ML model metadata and binary files required for loading the model back into a Spark session.
 
-### 🔹 `model1_baseline/`  
+### `model1_baseline/`  
 Baseline **Random Forest** model trained with default hyperparameters.
 
-### 🔹 `model1/`  
+### `model1/`  
 Tuned **Random Forest** model trained using grid search and cross-validation.
 
-### 🔹 `model2_baseline/`  
+### `model2_baseline/`  
 Baseline **Gradient Boosted Trees (GBT)** model with default settings.
 
-### 🔹 `model2/`  
+### `model2/`  
 Tuned **Gradient Boosted Trees** model with optimized `maxDepth` and `maxBins`.
 
-### 🔹 `model3_baseline/`  
+### `model3_baseline/`  
 Baseline **Decision Tree** model — used mainly as a reference.
 
-### 🔹 `model3/`  
+### `model3/`  
 Tuned **Decision Tree** model (also optimized via grid search).
 
 ## Notes
