@@ -4,7 +4,7 @@ This folder contains all the scripts used to automate each stage of the end-to-e
 
 ## Contents
 
-### 🚀 Pipeline Stages
+### Pipeline Stages
 
 - **`stage1.sh`**  
   Orchestrates data download, database creation, and conversion to Parquet.  
@@ -27,7 +27,7 @@ This folder contains all the scripts used to automate each stage of the end-to-e
 
 ---
 
-### 🔧 Supporting Scripts
+### Supporting Scripts
 
 - **`data_collection.sh`**  
   Downloads the raw NYC taxi dataset from Kaggle and extracts the target CSV file.
