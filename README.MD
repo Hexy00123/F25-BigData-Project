@@ -4,6 +4,8 @@ This repository is a template for the **final project** of a Big Data course. Th
 
 The pipeline handles everything from data collection and preprocessing to machine learning model training and result visualization — all built using distributed computing tools like Spark, Hive, and Hadoop.
 
+The project report is too large for GitHub to render. Thus, you can either download the PDF report locally or navigate to the [Typst (LaTeX alternative) that renders the report](https://typst.app/project/rSmrrga9HCvA8eirT2UTFu).
+
 ---
 
 ## 🧱 Project Structure
