@@ -12,3 +12,6 @@ beeline -u jdbc:hive2://hadoop-03.uni.innopolis.ru:10001 -n team11 -p "$password
 
 echo "INFO: Creating mq_model_2 table"
 beeline -u jdbc:hive2://hadoop-03.uni.innopolis.ru:10001 -n team11 -p "$password" -f sql/mq_model_2.hql > /dev/null
+
+echo "INFO: Creating mq_features_raw table"
+beeline -u jdbc:hive2://hadoop-03.uni.innopolis.ru:10001 -n team11 -p "$password" -f sql/mq2_raw.hql > /dev/null
