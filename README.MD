@@ -8,7 +8,7 @@ The project report is too large for GitHub to render. Thus, you can either downl
 
 ---
 
-## 🧱 Project Structure
+## Project Structure
 
 The project is organized into the following directories:
 
@@ -44,21 +44,21 @@ Contains all SQL and HiveQL scripts:
 
 ---
 
-## ⚙️ Pipeline Automation
+## Pipeline Automation
 
 ### `main.sh`
 The main execution script that runs all pipeline stages in order. This is the **only script** that will be executed during assessment. It must produce all final outputs in the `output/` folder.
 
 ---
 
-## 📦 Environment Setup
+## Environment Setup
 
 ### `requirements.txt`
 Lists all Python dependencies required to run the scripts in the pipeline. You can add packages here as needed.
 
 ---
 
-## 💡 Notes and Constraints
+## Notes and Constraints
 
 - The pipeline assumes access to a working Hadoop + Hive + Spark cluster.
 - Make sure database passwords are stored securely in the `secrets/` directory.
@@ -67,7 +67,7 @@ Lists all Python dependencies required to run the scripts in the pipeline. You c
 
 ---
 
-## 🏁 Goal
+## Goal
 
 Build a scalable, modular, and interpretable pipeline for predicting NYC taxi ride fares — while demonstrating strong practical knowledge of big data technologies.
 
