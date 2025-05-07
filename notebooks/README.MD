@@ -4,7 +4,7 @@ This folder contains the Jupyter notebook used during **Phase 3** of the project
 
 ## Contents
 
-### 📓 `modeling.ipynb`
+### `modeling.ipynb`
 
 This notebook documents the experimentation and prototyping steps for building a fare prediction model. It mirrors much of the logic used in the production pipeline (`ml_pipeline.py`) but was used earlier in development for:
 
