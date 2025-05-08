@@ -113,11 +113,11 @@ def main():
         .getOrCreate()
 
     # 2. Read & clean
-    df = spark.read.format("avro").table('team11_projectdb.taxi_trips')
-    df = df.filter(col("total_amount").between(0, 1e5))
+    raw_df = spark.read.format("avro").table('team11_projectdb.taxi_trips')
+    raw_df = raw_df.filter(col("total_amount").between(0, 1e5))
 
     # 3. Split
-    train_df, test_df = df.randomSplit([0.8, 0.2], seed=42)
+    train_df, test_df = raw_df.randomSplit([0.8, 0.2], seed=42)
 
     # 4. Preprocessing + feature pipeline
     pipeline = Pipeline(stages=[
@@ -168,11 +168,6 @@ def main():
             "estimator": GBTRegressor(featuresCol="features",
                                       labelCol="label"),
         },
-        {
-            "name": "DecisionTree",
-            "estimator": DecisionTreeRegressor(featuresCol="features",
-                                               labelCol="label")
-        }
     ]
 
     # Build parameter grids referring to the same estimator instances:
@@ -186,18 +181,11 @@ def main():
         .addGrid(models_config[1]["estimator"].maxBins, [24, 32])  \
         .build()
 
-    models_config[2]["param_grid"] = ParamGridBuilder()  \
-        .addGrid(models_config[2]["estimator"].maxDepth, [3, 8])  \
-        .addGrid(models_config[2]["estimator"].maxBins, [24, 32])  \
-        .build()
-
     # Add output paths
     models_config[0].update({"output_model": "model1",
                              "output_pred": "model1_predictions"})
     models_config[1].update({"output_model": "model2",
                              "output_pred": "model2_predictions"})
-    models_config[2].update({"output_model": "model3",
-                             "output_pred": "model3_predictions"})
 
     results = []
 
@@ -245,14 +233,14 @@ def main():
         pprint(config["param_grid"])
         tuning_start = time.time()
 
-        cv = CrossValidator(
+        cross_validator = CrossValidator(
             estimator=config["estimator"],
             estimatorParamMaps=config["param_grid"],
             evaluator=evaluator.setMetricName("rmse"),
             numFolds=3,
             parallelism=4
         )
-        tuned_model = cv.fit(train).bestModel
+        tuned_model = cross_validator.fit(train).bestModel
         tuning_train_time = time.time() - tuning_start
         print(f"Tuning completed in {tuning_train_time:.2f} seconds")
 
