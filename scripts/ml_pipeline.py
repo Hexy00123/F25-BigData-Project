@@ -128,27 +128,27 @@ class SelectAndRename(Transformer):
         return dataset.withColumnRenamed("total_amount", "label")
 
 
-def main():
-    """Main function to execute the ML pipeline."""
-    # 1. Init Spark
-    spark = SparkSession.builder \
+def init_spark():
+    """Spark session init"""
+    return SparkSession.builder \
         .appName("team11 - stage3") \
         .master("yarn") \
-        .config("hive.metastore.uris",
-                "thrift://hadoop-02.uni.innopolis.ru:9883") \
-        .config("spark.sql.warehouse.dir",
-                "/user/team11/project/hive/warehouse") \
+        .config("hive.metastore.uris", "thrift://hadoop-02.uni.innopolis.ru:9883") \
+        .config("spark.sql.warehouse.dir", "/user/team11/project/hive/warehouse") \
         .enableHiveSupport() \
         .getOrCreate()
 
-    # 2. Read & clean
-    raw_df = spark.read.format("avro").table('team11_projectdb.taxi_trips')
-    raw_df = raw_df.filter(col("total_amount").between(0, 1e5))
 
-    # 3. Split
-    train_df, test_df = raw_df.randomSplit([0.8, 0.2], seed=42)
+def load_and_clean_data(spark):
+    """Load, filter and split data"""
+    df_raw = spark.read.format("avro").table('team11_projectdb.taxi_trips')
+    df_raw = df_raw.filter(col("total_amount").between(0, 1e5))
+    train_df, test_df = df_raw.randomSplit([0.8, 0.2], seed=42)
+    return train_df, test_df
 
-    # 4. Preprocessing + feature pipeline
+
+def prepare_data(train_df, test_df):
+    """Preprocess train and test with pipeline"""
     pipeline = Pipeline(stages=[
         UnixMillisToTimestamp("tpep_pickup_datetime", "pickup_ts"),
         UnixMillisToTimestamp("tpep_dropoff_datetime", "dropoff_ts"),
@@ -175,20 +175,15 @@ def main():
                        outputCol='features',
                        withMean=True)
     ])
-    prep = pipeline.fit(train_df)
-    train = prep.transform(train_df)
-    test = prep.transform(test_df)
 
-    # Save splits
-    train.select("features", "label").coalesce(1)\
-        .write.mode("overwrite").json("project/data/train")
-    test.select("features", "label").coalesce(1)\
-        .write.mode("overwrite").json("project/data/test")
+    fitted_pipeline = pipeline.fit(train_df)
+    train_transformed = fitted_pipeline.transform(train_df)
+    test_transformed = fitted_pipeline.transform(test_df)
+    return train_transformed, test_transformed
 
-    # 5. Define evaluators & models
-    evaluator = RegressionEvaluator(labelCol="label",
-                                    predictionCol="prediction")
 
+def build_model_config():
+    """Model config for hyperparameter tuning"""
     models_config = [
         {
             "name": "RandomForest",
@@ -219,42 +214,55 @@ def main():
     models_config[1].update({"output_model": "model2",
                              "output_pred": "model2_predictions"})
 
+    return models_config
+
+
+def extract_relevant_params(model, config):
+    """Get relevant best parameters for given model and its config"""
+    param_map = model.extractParamMap()
+    params = {p.name: model.getOrDefault(p) for p in param_map.keys()}
+    relevant_param_names = [gp.name for gp in config['param_grid'][0].keys()]
+    filtered_params = {k: v for k, v in params.items() if k in relevant_param_names}
+    return filtered_params
+
+
+def training_pipeline(models_config, evaluator, train, test):
+    """Whole pipeline with baseline models and hyperparameter tuning"""
     results = []
 
-    # 6. Loop through configs
+    # Loop through configs
     for config in models_config:
         print(f"\n=== Running baseline model for: {config['name']} ===")
 
         # Step 1: Train baseline model (no tuning)
-        base_estimator = config["estimator"]
-        baseline_start = time.time()
-        baseline_model = base_estimator.fit(train)
-        baseline_train_time = time.time() - baseline_start
-        print(f"Baseline training time: {baseline_train_time:.2f} seconds")
+        start = time.time()
+        model = config["estimator"].fit(train)
+        end = time.time() - start
+        print(f"Baseline training time: {end:.2f} seconds")
 
-        baseline_start_test = time.time()
-        baseline_predictions = baseline_model.transform(test)
-        baseline_rmse = evaluator.setMetricName("rmse")\
-            .evaluate(baseline_predictions)
-        baseline_r2 = evaluator.setMetricName("r2")\
-            .evaluate(baseline_predictions)
-        baseline_test_time = time.time() - baseline_start_test
-        print(f"Baseline RMSE: {baseline_rmse:.4f}, R²: {baseline_r2:.4f}")
-        print(f"Baseline test time: {baseline_test_time:.2f} seconds")
+        start_test = time.time()
+        predictions = model.transform(test)
+        rmse = evaluator.setMetricName("rmse")\
+            .evaluate(predictions)
+        r_2 = evaluator.setMetricName("r2")\
+            .evaluate(predictions)
+        end_test = time.time() - start_test
+        print(f"Baseline RMSE: {rmse:.4f}, R²: {r_2:.4f}")
+        print(f"Baseline test time: {end_test:.2f} seconds")
 
         results.append((
             f"{config['name']}_baseline",
             "{}",
-            baseline_rmse,
-            baseline_r2,
-            baseline_train_time,
-            baseline_test_time
+            rmse,
+            r_2,
+            end,
+            end_test
         ))
 
         # Save baseline model and predictions
-        baseline_model.write().overwrite()\
+        model.write().overwrite()\
             .save(f"project/models/{config['output_model']}_baseline")
-        baseline_predictions.select("label", "prediction") \
+        predictions.select("label", "prediction") \
             .coalesce(1) \
             .write.mode("overwrite")\
             .csv(f"project/output/{config['output_pred']}_baseline",
@@ -263,54 +271,70 @@ def main():
         # Step 2: Hyperparameter tuning with CrossValidator
         print(f"\n--- Running hyperparameter tuning for: {config['name']} ---")
         pprint(config["param_grid"])
-        tuning_start = time.time()
+        start = time.time()
 
-        cross_validator = CrossValidator(
+        model = CrossValidator(
             estimator=config["estimator"],
             estimatorParamMaps=config["param_grid"],
             evaluator=evaluator.setMetricName("rmse"),
             numFolds=3,
             parallelism=4
-        )
-        tuned_model = cross_validator.fit(train).bestModel
-        tuning_train_time = time.time() - tuning_start
-        print(f"Tuning completed in {tuning_train_time:.2f} seconds")
+        ).fit(train).bestModel
 
-        param_map = tuned_model.extractParamMap()
-        params = {p.name: tuned_model.getOrDefault(p) for p in param_map.keys()}
-        grid_params = config['param_grid'][0].keys()
-        relevant_param_names = [gp.name for gp in grid_params]
-        filtered_params = {k: v for k, v in params.items() if k in relevant_param_names}
+        end = time.time() - start
+        print(f"Tuning completed in {end:.2f} seconds")
+
+        filtered_params = extract_relevant_params(model, config)
 
         # Save tuned model and predictions
-        tuned_model.write().overwrite()\
+        model.write().overwrite()\
             .save(f"project/models/{config['output_model']}")
-        tuning_start_test = time.time()
-        tuned_predictions = tuned_model.transform(test)
-        tuned_predictions.select('label', 'prediction') \
+        start_test = time.time()
+        predictions = model.transform(test)
+        predictions.select('label', 'prediction') \
             .coalesce(1) \
             .write.mode('overwrite')\
             .csv(f"project/output/{config['output_pred']}", header=True)
 
-        tuned_rmse = evaluator.setMetricName("rmse").evaluate(tuned_predictions)
-        tuned_r2 = evaluator.setMetricName("r2").evaluate(tuned_predictions)
-        print(f"Tuned RMSE: {tuned_rmse:.4f}, R²: {tuned_r2:.4f}")
-        tuning_test_time = time.time() - tuning_start_test
-        print(f"Baseline test time: {tuning_test_time:.2f} seconds")
+        rmse = evaluator.setMetricName("rmse").evaluate(predictions)
+        r_2 = evaluator.setMetricName("r2").evaluate(predictions)
+        print(f"Tuned RMSE: {rmse:.4f}, R²: {r_2:.4f}")
+        end_test = time.time() - start_test
+        print(f"Baseline test time: {end_test:.2f} seconds")
 
         results.append((
             f"{config['name']}_tuned",
             str(filtered_params),
-            tuned_rmse,
-            tuned_r2,
-            tuning_train_time,
-            tuning_test_time))
+            rmse,
+            r_2,
+            end,
+            end_test))
+    return results
 
-        # 7. Write evaluation summary
-        spark.createDataFrame(results, ["model", "params", "rmse", "r2",
-                                        "train_time_sec", "eval_time_sec"]) \
-            .coalesce(1).write.mode("overwrite")\
-            .csv("project/output/evaluation", header=True)
+
+def main():
+    """Main function to execute the ML pipeline."""
+
+    spark = init_spark()
+    train_df, test_df = load_and_clean_data(spark)
+    train, test = prepare_data(train_df, test_df)
+
+    train.select("features", "label").coalesce(1)\
+        .write.mode("overwrite").json("project/data/train")
+    test.select("features", "label").coalesce(1)\
+        .write.mode("overwrite").json("project/data/test")
+
+    evaluator = RegressionEvaluator(labelCol="label",
+                                    predictionCol="prediction")
+
+    models_config = build_model_config()
+
+    results = training_pipeline(models_config, evaluator, train, test)
+
+    spark.createDataFrame(results, ["model", "params", "rmse", "r2",
+                                    "train_time_sec", "eval_time_sec"]) \
+        .coalesce(1).write.mode("overwrite")\
+        .csv("project/output/evaluation", header=True)
 
 
 if __name__ == '__main__':
