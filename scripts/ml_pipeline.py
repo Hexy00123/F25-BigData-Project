@@ -10,8 +10,7 @@ import math
 from pyspark.sql import SparkSession
 from pyspark.ml import Pipeline, Transformer
 from pyspark.ml.feature import VectorAssembler, StandardScaler
-from pyspark.ml.regression import RandomForestRegressor, GBTRegressor,\
-                                    DecisionTreeRegressor
+from pyspark.ml.regression import RandomForestRegressor, GBTRegressor
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.tuning import ParamGridBuilder, CrossValidator
 from pyspark.sql.functions import col, hour, month, to_timestamp, from_unixtime
@@ -50,7 +49,7 @@ class ExtractHourMonth(Transformer):
 
 
 # Custom Transformer for cyclical encoding
-class CyclicalEncoder(Transformer):
+class CyclicalTimeEncoder(Transformer):
     """Custom Transformer to apply cyclical encoding to time features."""
 
     def _transform(self, dataset):
@@ -80,6 +79,34 @@ class CyclicalEncoder(Transformer):
             cos(2 * math.pi * col("dropoff_month") / lit(12)))
 
 
+class CyclicalGeoEncoder(Transformer):
+    """Encodes latitude and longitude cyclically."""
+
+    def _transform(self, dataset):
+        lon_norm = (col("pickup_longitude") + lit(180.0)) / lit(360.0)
+        lat_norm = (col("pickup_latitude") + lit(90.0)) / lit(180.0)
+        dataset = dataset.withColumn(
+            "pickup_lon_sin", sin(2 * math.pi * lon_norm)
+        ).withColumn(
+            "pickup_lon_cos", cos(2 * math.pi * lon_norm)
+        ).withColumn(
+            "pickup_lat_sin", sin(2 * math.pi * lat_norm)
+        ).withColumn(
+            "pickup_lat_cos", cos(2 * math.pi * lat_norm)
+        )
+        lon_norm = (col("dropoff_longitude") + lit(180.0)) / lit(360.0)
+        lat_norm = (col("dropoff_latitude") + lit(90.0)) / lit(180.0)
+        return dataset.withColumn(
+            "dropoff_lon_sin", sin(2 * math.pi * lon_norm)
+        ).withColumn(
+            "dropoff_lon_cos", cos(2 * math.pi * lon_norm)
+        ).withColumn(
+            "dropoff_lat_sin", sin(2 * math.pi * lat_norm)
+        ).withColumn(
+            "dropoff_lat_cos", cos(2 * math.pi * lat_norm)
+        )
+
+
 # Custom Transformer to select features and rename label
 class SelectAndRename(Transformer):
     """Selects specific columns and renames target column to 'label'."""
@@ -88,8 +115,10 @@ class SelectAndRename(Transformer):
         cols = [
             'total_amount', 'vendorid',
             'passenger_count', 'trip_distance',
-            'pickup_longitude', 'pickup_latitude',
-            'dropoff_longitude', 'dropoff_latitude',
+            'pickup_lon_sin', 'pickup_lon_cos',
+            'pickup_lat_sin', 'pickup_lat_cos',
+            'dropoff_lon_sin', 'dropoff_lon_cos',
+            'dropoff_lat_sin', 'dropoff_lat_cos',
             'pickup_hour_sin', 'pickup_hour_cos',
             'pickup_month_sin', 'pickup_month_cos',
             'dropoff_hour_sin', 'dropoff_hour_cos',
@@ -125,14 +154,17 @@ def main():
         UnixMillisToTimestamp("tpep_dropoff_datetime", "dropoff_ts"),
         ExtractHourMonth("pickup_ts", "pickup"),
         ExtractHourMonth("dropoff_ts", "dropoff"),
-        CyclicalEncoder(),
+        CyclicalTimeEncoder(),
+        CyclicalGeoEncoder(),
         SelectAndRename(),
         VectorAssembler(
             inputCols=[
                 'vendorid',
                 'passenger_count', 'trip_distance',
-                'pickup_longitude', 'pickup_latitude',
-                'dropoff_longitude', 'dropoff_latitude',
+                'pickup_lon_sin', 'pickup_lon_cos',
+                'pickup_lat_sin', 'pickup_lat_cos',
+                'dropoff_lon_sin', 'dropoff_lon_cos',
+                'dropoff_lat_sin', 'dropoff_lat_cos',
                 'pickup_hour_sin', 'pickup_hour_cos',
                 'pickup_month_sin', 'pickup_month_cos',
                 'dropoff_hour_sin', 'dropoff_hour_cos',
